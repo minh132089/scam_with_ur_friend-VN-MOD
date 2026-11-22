@@ -1,0 +1,6 @@
+build/
+dist/
+kit/downloads/
+kit/mod/*.dll
+kit/mod/*.exe
+*.zip

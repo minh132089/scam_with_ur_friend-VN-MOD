@@ -1,0 +1,82 @@
+﻿SCAM WITH YOUR FRIENDS - MOD TIẾNG VIỆT
+=======================================
+
+Mod này thêm vào game:
+  - Gọi điện bằng tiếng Việt: AI trả lời tiếng Việt, câu đệm tiếng Việt, tự sửa câu trả lời lỗi.
+  - Nhận giọng nói tiếng Việt bằng Whisper large-v3-turbo, chạy trên card đồ họa (nhanh, gần như tức thì).
+  - Giọng đọc người gọi tiếng Việt: Piper (luôn có) và VieNeu-TTS (tùy chọn, 25 giọng nam/nữ tự nhiên hơn).
+  - AI dùng Vilao (api.vilao.ai) thay cho OpenRouter; các bản vá giúp game chạy ổn định hơn.
+
+
+YÊU CẦU
+-------
+  - Đúng bản game 0.1.89 (giống bản của người gửi mod). Bản khác thì bộ cài dừng lại, không đụng vào game.
+  - Windows 10 hoặc 11, có mạng để tải: khoảng 650 MB (Whisper + Piper), thêm khoảng 1,8 GB nếu chọn VieNeu.
+  - Card đồ họa hỗ trợ Vulkan (NVIDIA / AMD / Intel đời mới) để nhận giọng nói nhanh.
+  - Chọn VieNeu thì nên có từ 16 GB RAM.
+
+
+CÀI ĐẶT
+-------
+  1. Tắt game.
+  2. Giải nén thư mục này ra đâu cũng được (tiện nhất là bỏ vào thư mục game, cạnh file
+     "Scam With Your Friends.exe").
+  3. Bấm đúp CAI-DAT.bat.
+     - Nếu không tự tìm thấy game, bộ cài sẽ hỏi thư mục chứa "Scam With Your Friends.exe".
+     - Bộ cài hỏi có cài VieNeu không: Y = có, N = không.
+     - Game nằm trong Program Files thì chuột phải CAI-DAT.bat -> Run as administrator.
+  4. Chờ chữ "XONG". Lỗi mạng giữa chừng thì cứ chạy lại CAI-DAT.bat, file đã tải được giữ lại.
+
+  Bộ cài sao lưu mọi file gốc thành <tên file>.swyf-orig trước khi vá.
+
+
+VÀO GAME
+--------
+  - Chọn Tiếng Việt ở mục ngôn ngữ cuộc gọi (trong cài đặt, hoặc nút 文A khi đang gọi).
+  - Chủ phòng (host): AI chạy trên máy host, nên chỉ host cần nhập API key Vilao của mình trong game
+    (mục OpenRouter / Bring Your Own Key). Người vào phòng không cần key.
+  - Cả hai người nên cài cùng bộ mod này để chơi chung không bị lệch.
+  - Có VieNeu: câu tiếng Việt đầu tiên game tự bật server VieNeu (vài giây đầu Piper đọc thay).
+
+
+MẸO CHỐNG CRASH (THIẾU RAM)
+--------------------------
+  - Tắt bớt trình duyệt, Discord, Zalo, ChatGPT, Riot Client... khi chơi.
+  - Tăng bộ nhớ ảo: Win+R -> SystemPropertiesPerformance -> Advanced -> Virtual memory -> Change
+    -> chọn ổ còn trống nhiều -> Custom size: Initial 8192, Maximum 32768 -> Set -> OK -> khởi động lại máy.
+  - Vẫn thiếu RAM: mở Scam With Your Friends_Data\StreamingAssets\swyf-voice.json, đổi "vieneu" thành
+    "piper" (đỡ khoảng 1,4 GB RAM, giọng kém tự nhiên hơn).
+
+
+TÙY CHỈNH
+---------
+  StreamingAssets\swyf-voice.json  : giọng đọc (vieneu / piper), gán giọng riêng cho từng người gọi.
+  StreamingAssets\swyf-vilao.json  : model AI (chỉ có tác dụng trên máy host).
+  Sửa xong lưu file là áp dụng ở câu tiếp theo, không cần khởi động lại game.
+
+
+GỠ MOD
+------
+  Bấm đúp GO-CAI-DAT.bat: trả mọi file gốc về chỗ cũ, xóa file của mod; hỏi có xóa luôn thư mục
+  SwyfMod (VieNeu, Python, model giọng) không.
+
+
+GẶP LỖI
+-------
+  Log game : %USERPROFILE%\AppData\LocalLow\Jatater Worldwide\Scam With Your Friends\Player.log
+  Log VieNeu: %TEMP%\swyf-vieneu-server.log
+  Gửi 2 file này cho người gửi mod.
+  Bộ cài báo "WMI cua Windows dang bi treo" hoặc VieNeu không lên: khởi động lại máy rồi chạy lại
+  CAI-DAT.bat (lỗi của Windows, làm Python bị treo).
+
+
+GHI CÔNG / GIẤY PHÉP
+-------------------
+  Bộ mod chỉ chứa mã của người làm mod. Game và các model không nằm trong gói này: bộ cài tải
+  về từ nguồn gốc lúc cài.
+  - Mono.Cecil (MIT) - dùng trong SwyfPatcher.exe
+  - Piper (MIT) - https://github.com/rhasspy/piper
+  - Giọng vi_VN-vais1000-medium (VAIS-1000, CC BY 4.0) - https://huggingface.co/rhasspy/piper-voices
+  - Whisper large-v3-turbo (MIT) - https://huggingface.co/ggerganov/whisper.cpp
+  - VieNeu-TTS (Apache-2.0) - https://github.com/pnnbao97/VieNeu-TTS
+  - uv (MIT / Apache-2.0) - https://github.com/astral-sh/uv

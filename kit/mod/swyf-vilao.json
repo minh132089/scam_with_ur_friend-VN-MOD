@@ -1,0 +1,5 @@
+{
+  "endpoint": "https://api.vilao.ai/v1/chat/completions",
+  "model": "chib/deepseek-v4.1-flash",
+  "_huong_dan": "Chi nguoi lam chu phong (host) can: nhap API key Vilao cua minh trong game (muc OpenRouter / Bring Your Own Key). Doi model AI: sua dong model (ten model dung nhu tren vilao, va phai duoc them vao key), luu file. Ap dung ngay o luot AI tiep theo. Sai dinh dang thi game tu quay ve chib/deepseek-v4.1-flash."
+}
