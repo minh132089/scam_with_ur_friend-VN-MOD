@@ -22,8 +22,8 @@ CÀI ĐẶT
   2. Giải nén thư mục này ra đâu cũng được (tiện nhất là bỏ vào thư mục game, cạnh file
      "Scam With Your Friends.exe").
   3. Bấm đúp CAI-DAT.bat.
-     - Bộ cài tự tìm game trên các ổ đĩa (vài giây). Không thấy thì mở cửa sổ cho chọn thư mục
-       chứa "Scam With Your Friends.exe". Lần sau nó nhớ thư mục này.
+     - Một cửa sổ chọn file hiện ra: chọn file "Scam With Your Friends.exe" của game rồi bấm Open.
+       Bộ cài thường đã mở sẵn đúng thư mục game, chỉ cần bấm Open. Lần sau nó nhớ thư mục này.
      - Một cửa sổ hỏi có cài VieNeu không: bấm Yes = có, No = không.
      - Game nằm trong Program Files thì chuột phải CAI-DAT.bat -> Run as administrator.
   4. Chờ chữ "XONG". Lỗi mạng giữa chừng thì cứ chạy lại CAI-DAT.bat, file đã tải được giữ lại.

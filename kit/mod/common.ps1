@@ -109,62 +109,74 @@ function Ask-YesNo([string]$text, [string]$title, [bool]$defaultYes) {
     finally { $owner.Dispose() }
 }
 
-# Finds the folder holding "Scam With Your Friends.exe", in order: -GameDir, the folder used last time,
-# around the mod folder, Steam libraries, every fixed drive (3 levels deep) and the user's Desktop /
-# Downloads / Documents; a folder with the right game version wins. Asks only when nothing is found.
+# The game folder: -GameDir when given, otherwise the player points at "Scam With Your Friends.exe" in a file
+# picker. The picker opens where the game probably is: the folder used last time (game-path.txt), else the
+# first match around the mod folder, in Steam libraries, on every fixed drive (3 levels deep) or in
+# Desktop / Downloads / Documents (a folder with build 0.1.89 wins).
 function Find-GameDir([string]$given, [string]$kitDir) {
     $saved = Join-Path $kitDir 'game-path.txt'
-    $result = $null
     if ($given) {
         if (-not (Test-GameDir $given)) { throw "Khong thay '$GameExeName' trong: $given" }
         $result = (Resolve-Path -LiteralPath $given).Path
     }
-    if (-not $result -and (Test-Path -LiteralPath $saved)) {
-        $last = (Get-Content -LiteralPath $saved -Raw -ErrorAction SilentlyContinue)
-        if ($last -and (Test-GameDir $last.Trim())) { $result = $last.Trim() }
-    }
-    if (-not $result) {
-        $fallback = $null
-        $sources = @(
-            { $near = @(); $dir = $kitDir; for ($i = 0; $i -lt 4 -and $dir; $i++) { $near += $dir; $dir = Split-Path -Parent $dir }; Search-GameDirs $near 1 10 },
-            { @(Get-SteamGameDirs | Where-Object { Test-GameDir $_ }) },
-            { Say '  Dang tim game tren cac o dia (vai giay)...'
-              $drives = [IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady } | ForEach-Object { $_.RootDirectory.FullName }
-              Search-GameDirs $drives 3 40 },
-            { $u = $env:USERPROFILE; Search-GameDirs @("$u\Desktop", "$u\Downloads", "$u\Documents", "$u\Games") 3 15 }
-        )
-        foreach ($source in $sources) {
-            foreach ($c in @(& $source)) {
-                if (-not $c) { continue }
-                if (Test-GameVersion $c) { $result = $c; break }
-                if (-not $fallback) { $fallback = $c }
-            }
-            if ($result) { break }
+    else {
+        $start = $null
+        if (Test-Path -LiteralPath $saved) {
+            $last = (Get-Content -LiteralPath $saved -Raw -ErrorAction SilentlyContinue)
+            if ($last -and (Test-GameDir $last.Trim())) { $start = $last.Trim() }
         }
-        if (-not $result) { $result = $fallback }
-    }
-    if (-not $result) {
-        Say "  Chua tim thay game. Hay chon thu muc co file '$GameExeName' trong cua so vua mo." 'White'
-        $result = Select-GameFolder
+        if (-not $start) { $start = Find-LikelyGameDir $kitDir }
+        Say "  -> Chon file '$GameExeName' trong cua so vua mo roi bam Open." 'White'
+        if ($start) { Say "     (cua so da mo san o: $start)" }
+        $result = Select-GameExe $start
     }
     try { Set-Content -LiteralPath $saved -Value $result -Encoding UTF8 } catch { }   # remembered for next time / uninstall
     return $result
 }
 
-function Select-GameFolder {
-    $owner = New-DialogOwner
-    try {
-        $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-        $dlg.Description = "Chon thu muc chua '$GameExeName'"
-        $dlg.ShowNewFolderButton = $false
-        if ($dlg.ShowDialog($owner) -ne [System.Windows.Forms.DialogResult]::OK) { throw 'Da huy: chua chon thu muc game.' }
-        $picked = $dlg.SelectedPath
+function Find-LikelyGameDir([string]$kitDir) {
+    $fallback = $null
+    $sources = @(
+        { $near = @(); $dir = $kitDir; for ($i = 0; $i -lt 4 -and $dir; $i++) { $near += $dir; $dir = Split-Path -Parent $dir }; Search-GameDirs $near 1 10 },
+        { @(Get-SteamGameDirs | Where-Object { Test-GameDir $_ }) },
+        { $drives = [IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady } | ForEach-Object { $_.RootDirectory.FullName }
+          Search-GameDirs $drives 3 20 },
+        { $u = $env:USERPROFILE; Search-GameDirs @("$u\Desktop", "$u\Downloads", "$u\Documents", "$u\Games") 3 10 }
+    )
+    foreach ($source in $sources) {
+        foreach ($c in @(& $source)) {
+            if (-not $c) { continue }
+            if (Test-GameVersion $c) { return $c }
+            if (-not $fallback) { $fallback = $c }
+        }
     }
-    finally { $owner.Dispose() }
-    if (-not (Test-GameDir $picked)) { throw "Thu muc nay khong co '$GameExeName': $picked" }
-    return $picked
+    return $fallback
 }
 
+# File picker filtered to "Scam With Your Friends.exe". Picking another file explains why and asks again.
+function Select-GameExe([string]$startDir) {
+    $owner = New-DialogOwner
+    try {
+        while ($true) {
+            $dlg = New-Object System.Windows.Forms.OpenFileDialog
+            $dlg.Title = "Chon file $GameExeName"
+            $dlg.Filter = "$GameExeName|$GameExeName|File .exe khac|*.exe"
+            $dlg.FileName = $GameExeName
+            $dlg.CheckFileExists = $true
+            $dlg.Multiselect = $false
+            if ($startDir -and [IO.Directory]::Exists($startDir)) { $dlg.InitialDirectory = $startDir }
+            if ($dlg.ShowDialog($owner) -ne [System.Windows.Forms.DialogResult]::OK) { throw 'Da huy: chua chon file game.' }
+            $dir = [IO.Path]::GetDirectoryName($dlg.FileName)
+            if (Test-GameDir $dir) { return $dir }
+            [void][System.Windows.Forms.MessageBox]::Show($owner,
+                ("File nay khong phai game:`n$($dlg.FileName)`n`nHay chon dung file '$GameExeName' " +
+                 "(nam canh thu muc '$DataDirName')."), 'Mod tieng Viet', [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning)
+            $startDir = $dir
+        }
+    }
+    finally { $owner.Dispose() }
+}
 function Assert-GameClosed {
     $running = Get-Process -Name 'Scam With Your Friends' -ErrorAction SilentlyContinue
     if ($running) { throw 'Game dang chay. Hay tat game roi chay lai.' }

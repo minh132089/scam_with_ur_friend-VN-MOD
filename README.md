@@ -12,8 +12,8 @@ Repo **không chứa file game hay model** nào. Bộ cài vá ngay trên DLL g�
 ## Cài cho người chơi
 
 1. Lấy `SWYF-VietMod.zip` (mục Releases, hoặc tự build như bên dưới) rồi giải nén.
-2. Tắt game, bấm đúp `CAI-DAT.bat`. Bộ cài tự tìm game; không thấy thì hỏi thư mục chứa `Scam With Your Friends.exe`.
-3. Trả lời có cài VieNeu không (Y/N).
+2. Tắt game, bấm đúp `CAI-DAT.bat`, rồi chọn file `Scam With Your Friends.exe` của game trong cửa sổ hiện ra. Cửa sổ thường đã mở sẵn đúng thư mục game.
+3. Bấm Yes / No khi được hỏi có cài VieNeu không.
 4. Vào game, chọn **Tiếng Việt** ở mục ngôn ngữ cuộc gọi (trong cài đặt, hoặc nút 文A khi đang gọi).
 
 Hướng dẫn đầy đủ (yêu cầu máy, mẹo chống crash, gỡ mod): [kit/HUONG-DAN.txt](kit/HUONG-DAN.txt).
