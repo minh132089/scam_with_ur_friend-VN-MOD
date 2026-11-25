@@ -43,8 +43,9 @@ if (Test-Path -LiteralPath (Join-Path $piperDir 'README-swyf.txt')) { Remove-Ite
 if (Test-Path -LiteralPath $ModDir) {
     $remove = $RemoveVieNeu
     if (-not $RemoveVieNeu -and -not $KeepVieNeu) {
-        $ans = Read-Host "  Xoa luon thu muc SwyfMod (VieNeu-TTS, Python, model giong; vai GB)? (Y = xoa / N = giu)"
-        $remove = $ans -match '^\s*[yYcC]'
+        Say '  -> Tra loi trong cua so vua hien ra.' 'White'
+        $remove = Ask-YesNo ("Xoa luon thu muc SwyfMod?`n`n(VieNeu-TTS, Python va model giong, vai GB)`n`n" +
+            "Yes = xoa     No = giu lai") 'Go mod tieng Viet' $true
     }
     if ($remove) { Remove-Item -LiteralPath $ModDir -Recurse -Force; Ok 'Xoa SwyfMod' } else { Ok 'Giu SwyfMod' }
 }

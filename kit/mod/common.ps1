@@ -24,32 +24,145 @@ function Get-Sha256([string]$path) { return (Get-FileHash -LiteralPath $path -Al
 
 function Test-GameDir([string]$dir) {
     if ([string]::IsNullOrWhiteSpace($dir)) { return $false }
-    return (Test-Path -LiteralPath (Join-Path $dir $GameExeName)) -and (Test-Path -LiteralPath (Join-Path $dir "$DataDirName\Managed"))
+    try {
+        return [IO.File]::Exists([IO.Path]::Combine($dir, $GameExeName)) -and
+            [IO.Directory]::Exists([IO.Path]::Combine($dir, $DataDirName, 'Managed'))
+    }
+    catch { return $false }
 }
 
-# Finds the folder holding "Scam With Your Friends.exe": -GameDir, then around the mod folder, then asks.
-function Find-GameDir([string]$given, [string]$kitDir) {
-    if ($given) {
-        if (Test-GameDir $given) { return (Resolve-Path -LiteralPath $given).Path }
-        throw "Khong thay '$GameExeName' trong: $given"
+# True when the folder holds build 0.1.89-swyf: Assembly-CSharp.dll (or its .swyf-orig / .bak copy) is the original.
+function Test-GameVersion([string]$dir) {
+    $a = [IO.Path]::Combine($dir, $DataDirName, 'Managed', 'Assembly-CSharp.dll')
+    foreach ($p in ($a + $OrigSuffix), $a, ($a + '.bak')) {
+        if ([IO.File]::Exists($p) -and (Get-Sha256 $p) -eq $OriginalManaged['Assembly-CSharp.dll']) { return $true }
     }
-    $candidates = New-Object System.Collections.Generic.List[string]
-    $dir = $kitDir
-    for ($i = 0; $i -lt 4 -and $dir; $i++) {
-        $candidates.Add($dir)
-        Get-ChildItem -LiteralPath $dir -Directory -ErrorAction SilentlyContinue | ForEach-Object { $candidates.Add($_.FullName) }
-        $dir = Split-Path -Parent $dir
-    }
-    foreach ($c in $candidates) { if (Test-GameDir $c) { return (Resolve-Path -LiteralPath $c).Path } }
+    return $false
+}
 
-    Say "Khong tu tim thay game. Hay chon thu muc co file '$GameExeName'." 'Yellow'
+# Folders up to $maxDepth below each root that hold the game. Skips Windows' own folders; stops after $seconds.
+function Search-GameDirs([string[]]$roots, [int]$maxDepth, [int]$seconds) {
+    $skip = 'Windows', '$Recycle.Bin', 'System Volume Information', 'Recovery', 'PerfLogs', '$WinREAgent', 'Config.Msi',
+        'ProgramData', 'MSOCache', '$SysReset', '$Windows.~WS', '$Windows.~BT', 'AppData', 'node_modules', '.git'
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $found = New-Object System.Collections.Generic.List[string]
+    $level = New-Object System.Collections.Generic.List[string]
+    foreach ($r in $roots) { if ($r -and [IO.Directory]::Exists($r)) { $level.Add($r) } }
+    for ($depth = 0; $depth -le $maxDepth -and $level.Count -gt 0; $depth++) {
+        $next = New-Object System.Collections.Generic.List[string]
+        foreach ($dir in $level) {
+            if ($sw.Elapsed.TotalSeconds -gt $seconds) { return $found }
+            if (Test-GameDir $dir) { $found.Add($dir); continue }
+            if ($depth -eq $maxDepth) { continue }
+            try {
+                foreach ($sub in [IO.Directory]::EnumerateDirectories($dir)) {
+                    if ($skip -notcontains [IO.Path]::GetFileName($sub)) { $next.Add($sub) }
+                }
+            }
+            catch { }   # access denied, junctions, removed drives
+        }
+        $level = $next
+    }
+    return $found
+}
+
+# Steam library folders: <library>\steamapps\common\Scam With Your Friends
+function Get-SteamGameDirs {
+    $dirs = @()
+    try {
+        $steam = (Get-ItemProperty -Path 'HKCU:\Software\Valve\Steam' -Name SteamPath -ErrorAction Stop).SteamPath
+        $libs = @($steam)
+        $vdf = [IO.Path]::Combine($steam, 'steamapps', 'libraryfolders.vdf')
+        if ([IO.File]::Exists($vdf)) {
+            $libs += [regex]::Matches([IO.File]::ReadAllText($vdf), '"path"\s+"([^"]+)"') | ForEach-Object { $_.Groups[1].Value.Replace('\\', '\') }
+        }
+        $dirs = $libs | ForEach-Object { [IO.Path]::Combine($_.Replace('/', '\'), 'steamapps', 'common', 'Scam With Your Friends') }
+    }
+    catch { }
+    return $dirs
+}
+
+# A hidden always-on-top window that owns our dialogs, so they open in front of the console.
+function New-DialogOwner {
     Add-Type -AssemblyName System.Windows.Forms
-    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dlg.Description = "Chon thu muc chua '$GameExeName'"
-    $dlg.ShowNewFolderButton = $false
-    if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { throw 'Da huy: chua chon thu muc game.' }
-    if (-not (Test-GameDir $dlg.SelectedPath)) { throw "Thu muc nay khong co '$GameExeName': $($dlg.SelectedPath)" }
-    return $dlg.SelectedPath
+    $f = New-Object System.Windows.Forms.Form
+    $f.TopMost = $true
+    $f.ShowInTaskbar = $false
+    $f.FormBorderStyle = 'None'
+    $f.Opacity = 0
+    $f.StartPosition = 'CenterScreen'
+    $f.Size = New-Object System.Drawing.Size(1, 1)
+    $f.Show()
+    $f.Activate()
+    return $f
+}
+
+# Yes/No dialog. Returns $true for Yes.
+function Ask-YesNo([string]$text, [string]$title, [bool]$defaultYes) {
+    $owner = New-DialogOwner
+    try {
+        $default = if ($defaultYes) { [System.Windows.Forms.MessageBoxDefaultButton]::Button1 } else { [System.Windows.Forms.MessageBoxDefaultButton]::Button2 }
+        $r = [System.Windows.Forms.MessageBox]::Show($owner, $text, $title, [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question, $default)
+        return $r -eq [System.Windows.Forms.DialogResult]::Yes
+    }
+    finally { $owner.Dispose() }
+}
+
+# Finds the folder holding "Scam With Your Friends.exe", in order: -GameDir, the folder used last time,
+# around the mod folder, Steam libraries, every fixed drive (3 levels deep) and the user's Desktop /
+# Downloads / Documents; a folder with the right game version wins. Asks only when nothing is found.
+function Find-GameDir([string]$given, [string]$kitDir) {
+    $saved = Join-Path $kitDir 'game-path.txt'
+    $result = $null
+    if ($given) {
+        if (-not (Test-GameDir $given)) { throw "Khong thay '$GameExeName' trong: $given" }
+        $result = (Resolve-Path -LiteralPath $given).Path
+    }
+    if (-not $result -and (Test-Path -LiteralPath $saved)) {
+        $last = (Get-Content -LiteralPath $saved -Raw -ErrorAction SilentlyContinue)
+        if ($last -and (Test-GameDir $last.Trim())) { $result = $last.Trim() }
+    }
+    if (-not $result) {
+        $fallback = $null
+        $sources = @(
+            { $near = @(); $dir = $kitDir; for ($i = 0; $i -lt 4 -and $dir; $i++) { $near += $dir; $dir = Split-Path -Parent $dir }; Search-GameDirs $near 1 10 },
+            { @(Get-SteamGameDirs | Where-Object { Test-GameDir $_ }) },
+            { Say '  Dang tim game tren cac o dia (vai giay)...'
+              $drives = [IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady } | ForEach-Object { $_.RootDirectory.FullName }
+              Search-GameDirs $drives 3 40 },
+            { $u = $env:USERPROFILE; Search-GameDirs @("$u\Desktop", "$u\Downloads", "$u\Documents", "$u\Games") 3 15 }
+        )
+        foreach ($source in $sources) {
+            foreach ($c in @(& $source)) {
+                if (-not $c) { continue }
+                if (Test-GameVersion $c) { $result = $c; break }
+                if (-not $fallback) { $fallback = $c }
+            }
+            if ($result) { break }
+        }
+        if (-not $result) { $result = $fallback }
+    }
+    if (-not $result) {
+        Say "  Chua tim thay game. Hay chon thu muc co file '$GameExeName' trong cua so vua mo." 'White'
+        $result = Select-GameFolder
+    }
+    try { Set-Content -LiteralPath $saved -Value $result -Encoding UTF8 } catch { }   # remembered for next time / uninstall
+    return $result
+}
+
+function Select-GameFolder {
+    $owner = New-DialogOwner
+    try {
+        $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dlg.Description = "Chon thu muc chua '$GameExeName'"
+        $dlg.ShowNewFolderButton = $false
+        if ($dlg.ShowDialog($owner) -ne [System.Windows.Forms.DialogResult]::OK) { throw 'Da huy: chua chon thu muc game.' }
+        $picked = $dlg.SelectedPath
+    }
+    finally { $owner.Dispose() }
+    if (-not (Test-GameDir $picked)) { throw "Thu muc nay khong co '$GameExeName': $picked" }
+    return $picked
 }
 
 function Assert-GameClosed {

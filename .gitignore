@@ -4,3 +4,4 @@ kit/downloads/
 kit/mod/*.dll
 kit/mod/*.exe
 *.zip
+kit/game-path.txt

@@ -117,8 +117,12 @@ elseif (-not $NoVieNeu) {
     Say '  tai them ~1.8 GB, dung them ~1.5 GB RAM khi choi, can CPU kha.'
     $hint = if ($ramGb -ge 16) { 'nen cai' } else { 'may it RAM, nen bo qua' }
     Say "  May nay co $ramGb GB RAM ($hint)."
-    $ans = Read-Host '  Cai them VieNeu-TTS? (Y = co / N = khong)'
-    $useVieNeu = $ans -match '^\s*[yYcC]'
+    Say '  -> Tra loi trong cua so vua hien ra (Yes = co, No = khong).' 'White'
+    $useVieNeu = Ask-YesNo ("Cai them giong doc VieNeu-TTS?`n`n" +
+        "- 25 giong nam/nu tieng Viet, tu nhien hon Piper`n" +
+        "- Tai them khoang 1.8 GB, dung them khoang 1.5 GB RAM khi choi`n`n" +
+        "May nay co $ramGb GB RAM ($hint).`n`nYes = cai VieNeu     No = chi dung Piper") 'Mod tieng Viet - giong doc' ($ramGb -ge 16)
+    Say ('  Ban chon: ' + $(if ($useVieNeu) { 'cai VieNeu' } else { 'chi dung Piper' }))
 }
 
 # 3) Back up originals, patch -----------------------------------------------------------------------------

@@ -46,6 +46,11 @@ if ($LASTEXITCODE -ne 0) { throw 'SwyfPatcher build failed' }
 $stage = Join-Path $build 'SWYF-VietMod'
 if (Test-Path $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 Copy-Item -LiteralPath (Join-Path $root 'kit') -Destination $stage -Recurse
+# Never ship a local run's state: the remembered game folder or the download cache.
+foreach ($local in 'game-path.txt', 'downloads') {
+    $p = Join-Path $stage $local
+    if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Recurse -Force }
+}
 Copy-Item "$build\SwyfCompat.dll", "$build\SwyfPatcher.exe", $cecil -Destination (Join-Path $stage 'mod') -Force
 $zip = Join-Path $dist 'SWYF-VietMod.zip'
 if (Test-Path $zip) { Remove-Item -LiteralPath $zip -Force }
